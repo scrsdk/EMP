@@ -1,0 +1,1000 @@
+openapi: 3.0.3
+info:
+  title: TON Empire Game API
+  description: |
+    REST API для игры TON Empire - социальной стратегии на блокчейне TON.
+    
+    ## Аутентификация
+    API использует JWT токены для аутентификации. Токены получаются через Telegram Mini App.
+    
+    ## Rate Limiting
+    - Аутентификация: 10 запросов в минуту
+    - Game API: 100 запросов в минуту
+    - WebSocket: без ограничений
+    
+    ## Коды ошибок
+    - 400: Некорректный запрос
+    - 401: Не авторизован
+    - 403: Доступ запрещен
+    - 404: Ресурс не найден
+    - 429: Превышен лимит запросов
+    - 500: Внутренняя ошибка сервера
+  version: 1.0.0
+  contact:
+    name: TON Empire Development Team
+    email: dev@ton-empire.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.ton-empire.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Authentication Endpoints
+  /api/auth/telegram:
+    post:
+      tags:
+        - Authentication
+      summary: Аутентификация через Telegram
+      description: Аутентификация пользователя с помощью данных из Telegram Mini App
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                initData:
+                  type: string
+                  description: Данные инициализации из Telegram WebApp
+                  example: "user=%7B%22id%22%3A123456789..."
+              required:
+                - initData
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  access_token:
+                    type: string
+                    description: JWT access token
+                  refresh_token:
+                    type: string
+                    description: JWT refresh token
+                  expires_in:
+                    type: integer
+                    description: Время жизни токена в секундах
+                    example: 3600
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Обновление токена
+      description: Обновление JWT токена с помощью refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  description: Refresh token
+              required:
+                - refresh_token
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # User Endpoints
+  /api/users/me:
+    get:
+      tags:
+        - Users
+      summary: Получить профиль текущего пользователя
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags:
+        - Users
+      summary: Обновить профиль пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 32
+                first_name:
+                  type: string
+                  maxLength: 64
+                last_name:
+                  type: string
+                  maxLength: 64
+      responses:
+        '200':
+          description: Профиль обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Получить профиль пользователя по ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # District Endpoints
+  /api/game/districts/my:
+    get:
+      tags:
+        - Game
+      summary: Получить мой район
+      responses:
+        '200':
+          description: Информация о районе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Район не найден (новый пользователь)
+
+    post:
+      tags:
+        - Game
+      summary: Создать новый район
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  description: Название района
+              required:
+                - name
+      responses:
+        '201':
+          description: Район создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/District'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Район уже существует
+
+  /api/game/districts/{districtId}/buildings:
+    get:
+      tags:
+        - Game
+      summary: Получить здания района
+      parameters:
+        - name: districtId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список зданий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buildings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Building'
+                  total:
+                    type: integer
+                    description: Общее количество зданий
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags:
+        - Game
+      summary: Построить здание
+      parameters:
+        - name: districtId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  $ref: '#/components/schemas/BuildingType'
+                position:
+                  $ref: '#/components/schemas/Position'
+              required:
+                - type
+                - position
+      responses:
+        '201':
+          description: Здание построено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/game/buildings/{buildingId}:
+    get:
+      tags:
+        - Game
+      summary: Получить информацию о здании
+      parameters:
+        - name: buildingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о здании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Game
+      summary: Снести здание
+      parameters:
+        - name: buildingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Здание снесено
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/game/buildings/{buildingId}/upgrade:
+    post:
+      tags:
+        - Game
+      summary: Улучшить здание
+      parameters:
+        - name: buildingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Улучшение начато
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/game/resources/collect:
+    post:
+      tags:
+        - Game
+      summary: Собрать ресурсы
+      responses:
+        '200':
+          description: Ресурсы собраны
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collected:
+                    $ref: '#/components/schemas/Resources'
+                  total:
+                    $ref: '#/components/schemas/Resources'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Guild Endpoints
+  /api/game/guilds:
+    get:
+      tags:
+        - Guilds
+      summary: Поиск гильдий
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            minLength: 3
+          description: Поисковый запрос по названию
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Список гильдий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  guilds:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Guild'
+                  total:
+                    type: integer
+
+    post:
+      tags:
+        - Guilds
+      summary: Создать гильдию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                tag:
+                  type: string
+                  minLength: 2
+                  maxLength: 8
+                  pattern: '^[A-Z0-9]+$'
+                description:
+                  type: string
+                  maxLength: 500
+              required:
+                - name
+                - tag
+      responses:
+        '201':
+          description: Гильдия создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guild'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Гильдия с таким названием или тегом уже существует
+
+  # Battle Endpoints
+  /api/game/battles/search:
+    post:
+      tags:
+        - Battle
+      summary: Найти противников для битвы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                min_level:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                max_level:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                min_power:
+                  type: integer
+                  minimum: 0
+                max_power:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Список возможных противников
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  targets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BattleTarget'
+
+  /api/game/battles/{targetUserId}/attack:
+    post:
+      tags:
+        - Battle
+      summary: Атаковать игрока
+      parameters:
+        - name: targetUserId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Битва начата
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Battle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Leaderboard Endpoints
+  /api/game/leaderboard/players:
+    get:
+      tags:
+        - Leaderboard
+      summary: Рейтинг игроков
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [power, level, battle_rating]
+            default: power
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Рейтинг игроков
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  players:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+                  total:
+                    type: integer
+                  user_rank:
+                    type: integer
+                    description: Позиция текущего пользователя
+
+  /api/game/leaderboard/guilds:
+    get:
+      tags:
+        - Leaderboard
+      summary: Рейтинг гильдий
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Рейтинг гильдий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  guilds:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GuildLeaderboardEntry'
+                  total:
+                    type: integer
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        telegram_id:
+          type: string
+        username:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        level:
+          type: integer
+          minimum: 1
+        experience:
+          type: integer
+          minimum: 0
+        power:
+          type: integer
+          minimum: 0
+        battle_stats:
+          type: object
+          properties:
+            wins:
+              type: integer
+            losses:
+              type: integer
+            rating:
+              type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_active_at:
+          type: string
+          format: date-time
+
+    PublicUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        level:
+          type: integer
+        power:
+          type: integer
+        battle_stats:
+          type: object
+          properties:
+            wins:
+              type: integer
+            losses:
+              type: integer
+            rating:
+              type: integer
+        guild:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            tag:
+              type: string
+
+    District:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        population:
+          type: integer
+        efficiency:
+          type: integer
+          description: Эффективность в процентах (0-100)
+        resources:
+          $ref: '#/components/schemas/Resources'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Building:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        district_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/BuildingType'
+        level:
+          type: integer
+          minimum: 1
+          maximum: 10
+        health:
+          type: integer
+          minimum: 0
+        max_health:
+          type: integer
+          minimum: 1
+        position:
+          $ref: '#/components/schemas/Position'
+        is_active:
+          type: boolean
+        construction_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        upgrade_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BuildingType:
+      type: string
+      enum:
+        - house
+        - farm
+        - mine
+        - lumber_mill
+        - power_plant
+        - barracks
+        - wall
+        - market
+
+    Position:
+      type: object
+      properties:
+        x:
+          type: integer
+          minimum: 0
+          maximum: 9
+        y:
+          type: integer
+          minimum: 0
+          maximum: 9
+
+    Resources:
+      type: object
+      properties:
+        gold:
+          type: integer
+          minimum: 0
+        wood:
+          type: integer
+          minimum: 0
+        stone:
+          type: integer
+          minimum: 0
+        food:
+          type: integer
+          minimum: 0
+        energy:
+          type: integer
+          minimum: 0
+
+    Guild:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        tag:
+          type: string
+        description:
+          type: string
+        level:
+          type: integer
+        experience:
+          type: integer
+        member_count:
+          type: integer
+        max_members:
+          type: integer
+        total_power:
+          type: integer
+        battles_won:
+          type: integer
+        territory_controlled:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BattleTarget:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        level:
+          type: integer
+        power:
+          type: integer
+        district_name:
+          type: string
+        guild:
+          type: object
+          properties:
+            name:
+              type: string
+            tag:
+              type: string
+        is_online:
+          type: boolean
+        last_battle:
+          type: string
+          format: date-time
+          nullable: true
+
+    Battle:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        attacker_id:
+          type: string
+          format: uuid
+        defender_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [preparation, active, completed]
+        winner_id:
+          type: string
+          format: uuid
+          nullable: true
+        battle_end_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        user:
+          $ref: '#/components/schemas/PublicUser'
+        score:
+          type: integer
+          description: Значение для сортировки (power, level, rating)
+
+    GuildLeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        guild:
+          $ref: '#/components/schemas/Guild'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Код ошибки
+        message:
+          type: string
+          description: Описание ошибки
+        details:
+          type: object
+          description: Дополнительная информация об ошибке
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "bad_request"
+            message: "Invalid request parameters"
+
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            message: "Authentication required"
+
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            message: "Access denied"
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "not_found"
+            message: "Resource not found"
+
+    TooManyRequests:
+      description: Превышен лимит запросов
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "rate_limit_exceeded"
+            message: "Too many requests"
+
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "internal_server_error"
+            message: "An unexpected error occurred"
