@@ -1,0 +1,84 @@
+app:
+  name: ton-empire
+  env: development
+  debug: true
+
+server:
+  api_gateway:
+    host: 0.0.0.0
+    port: 8080
+    read_timeout: 10s
+    write_timeout: 10s
+    cors:
+      allowed_origins:
+        - http://localhost:3000
+        - https://web.telegram.org
+      allowed_methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Telegram-Init-Data
+  
+  auth_service:
+    host: 0.0.0.0
+    port: 8081
+    
+  user_service:
+    host: 0.0.0.0
+    port: 8082
+    
+  game_service:
+    host: 0.0.0.0
+    port: 8083
+
+database:
+  postgres:
+    host: localhost
+    port: 5432
+    user: postgres
+    password: postgres
+    database: ton_empire
+    ssl_mode: disable
+    max_connections: 100
+    max_idle_connections: 10
+    connection_max_lifetime: 1h
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 100
+  min_idle_conns: 10
+  max_retries: 3
+  cache_ttl: 5m
+
+telegram:
+  bot_token: ${TELEGRAM_BOT_TOKEN}
+  webapp_url: ${TELEGRAM_WEBAPP_URL}
+  
+jwt:
+  secret: ${JWT_SECRET}
+  access_token_ttl: 24h
+  refresh_token_ttl: 168h # 7 days
+
+rate_limiter:
+  requests_per_minute: 60
+  burst: 10
+
+logging:
+  level: debug
+  format: json
+  output:
+    - stdout
+    - file
+  file:
+    path: logs/app.log
+    max_size: 100 # MB
+    max_backups: 3
+    max_age: 7 # days

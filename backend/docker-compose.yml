@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ton-empire-postgres
+    environment:
+      POSTGRES_DB: ton_empire
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ton-empire-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/api-gateway.Dockerfile
+    container_name: ton-empire-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - TON_EMPIRE_APP_ENV=development
+      - TON_EMPIRE_TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TON_EMPIRE_TELEGRAM_WEBAPP_URL=${TELEGRAM_WEBAPP_URL}
+      - TON_EMPIRE_JWT_SECRET=${JWT_SECRET:-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: docker/auth-service.Dockerfile
+    container_name: ton-empire-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - TON_EMPIRE_APP_ENV=development
+      - TON_EMPIRE_DATABASE_POSTGRES_HOST=postgres
+      - TON_EMPIRE_REDIS_HOST=redis
+      - TON_EMPIRE_TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TON_EMPIRE_JWT_SECRET=${JWT_SECRET:-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+
+  user-service:
+    build:
+      context: .
+      dockerfile: docker/user-service.Dockerfile
+    container_name: ton-empire-user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - TON_EMPIRE_APP_ENV=development
+      - TON_EMPIRE_DATABASE_POSTGRES_HOST=postgres
+      - TON_EMPIRE_REDIS_HOST=redis
+      - TON_EMPIRE_JWT_SECRET=${JWT_SECRET:-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+
+  game-service:
+    build:
+      context: .
+      dockerfile: docker/game-service.Dockerfile
+    container_name: ton-empire-game-service
+    ports:
+      - "8083:8083"
+    environment:
+      - TON_EMPIRE_APP_ENV=development
+      - TON_EMPIRE_DATABASE_POSTGRES_HOST=postgres
+      - TON_EMPIRE_REDIS_HOST=redis
+      - TON_EMPIRE_JWT_SECRET=${JWT_SECRET:-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:
+  redis_data:
