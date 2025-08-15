@@ -227,7 +227,7 @@ export default function GuildPage() {
   
   return (
     <div className="min-h-screen bg-tg-bg pb-20">
-      {/* Хедер гильдии */}
+      {/* Хед гильдии */}
       <motion.div 
         className="bg-gradient-to-b from-tg-button to-tg-button/80"
         initial={{ y: -20, opacity: 0 }}
