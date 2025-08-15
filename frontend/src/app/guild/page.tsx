@@ -16,7 +16,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { formatNumber } from '@/lib/format'
 
-interface GuildMember {
+interface GuildMember { 
   id: string
   name: string
   avatar?: string
