@@ -103,7 +103,7 @@ export default function SettingsPage() {
           onClick: () => {
             logout()
           },
-          variant: 'danger'
+          variant: 'primary'
         }
       ]
     })
