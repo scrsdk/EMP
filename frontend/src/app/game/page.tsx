@@ -690,7 +690,7 @@ export default function GamePage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="destructive" size="sm">Скидки</Badge>
+                <Badge variant="info" size="sm">Скидки</Badge>
                 <span className="text-tg-hint">→</span>
               </div>
             </div>
