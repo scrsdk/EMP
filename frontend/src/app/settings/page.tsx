@@ -89,7 +89,7 @@ export default function SettingsPage() {
     addNotification({
       type: 'error',
       title: 'Удалить аккаунт?',
-      message: 'Это действие необратимо!',
+      message: 'Это действие необратимо!!',
       icon: '⚠️',
       persistent: true,
       actions: [
@@ -102,7 +102,7 @@ export default function SettingsPage() {
           label: 'Удалить',
           onClick: () => {
             logout()
-          },
+          }, 
           variant: 'primary'
         }
       ]
