@@ -594,7 +594,7 @@ export default function GuildPage() {
                         <Badge 
                           variant={
                             war.result === 'active' ? 'warning' :
-                            war.result === 'win' ? 'success' : 'error'
+                            war.result === 'win' ? 'success' : 'info'
                           }
                           size="xs"
                         >
