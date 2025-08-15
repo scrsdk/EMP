@@ -348,7 +348,7 @@ export default function GuildPage() {
                     <div className="bg-red-500/10 px-4 py-2 -m-4 mb-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-red-600">⚔️ Война гильдий</span>
-                        <Badge variant="error" size="xs">
+                        <Badge variant="info" size="xs">
                           {currentWar.timeLeft}
                         </Badge>
                       </div>
