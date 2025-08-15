@@ -333,7 +333,7 @@ export default function GuildPage() {
                     whileHover={{ scale: 1.05 }}
                   >
                     <div className="text-2xl font-bold">{formatNumber(guildInfo.power)}</div>
-                    <div className="text-xs text-tg-hint">Сила</div>
+                    <div className="text-xs text-tg-hint">Силаа</div>
                   </motion.div>
                 </div>
               </Card>
