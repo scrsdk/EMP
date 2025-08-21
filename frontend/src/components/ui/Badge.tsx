@@ -29,7 +29,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
     ...props 
   }, ref) => {
     const baseStyles = 'inline-flex items-center justify-center font-medium rounded-full transition-all duration-200'
-    
+
     const variants = {
       default: 'bg-surface/10 text-tg-text backdrop-blur-sm border border-surface/20',
       success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
@@ -39,14 +39,14 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
       premium: 'bg-gradient-gold text-empire-gold-dark shadow-glow-sm',
       glass: 'glass-card text-tg-text',
     }
-    
+
     const sizes = {
       xs: 'text-[10px] px-2 py-0.5 gap-1',
       sm: 'text-xs px-2.5 py-1 gap-1.5',
       md: 'text-sm px-3 py-1.5 gap-2',
       lg: 'text-base px-4 py-2 gap-2',
     }
-    
+
     const Component = animated ? motion.div : 'div'
     const animationProps = animated ? {
       initial: { scale: 0, opacity: 0 },
@@ -54,7 +54,15 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
       exit: { scale: 0, opacity: 0 },
       transition: { type: 'spring', stiffness: 500, damping: 25 }
     } : {}
-    
+
+    // Исключаем DOM-события анимации, чтобы не конфликтовали с motion props
+    const {
+      onAnimationStart,
+      onAnimationEnd,
+      onAnimationIteration,
+      ...restProps
+    } = props
+
     return (
       <Component
         ref={ref}
@@ -66,7 +74,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
           className
         )}
         {...animationProps}
-        {...props}
+        {...restProps}
       >
         {icon && <span className="flex-shrink-0">{icon}</span>}
         {children}
@@ -87,6 +95,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
     )
   }
 )
+
 
 Badge.displayName = 'Badge'
 
