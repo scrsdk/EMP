@@ -1,9 +1,9 @@
 'use client'
 
-import { HTMLAttributes, forwardRef } from 'react'
-import { motion, HTMLMotionProps } from 'framer-motion' // Импортируем HTMLMotionProps
+import { HTMLAttributes, forwardRef, ReactNode, ElementType } from 'react'
+import { motion, HTMLMotionProps } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { formatNumber } from '@/lib/format'
+import { formatNumber } from '@/lib/format' // Убедитесь, что этот импорт корректен
 
 interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'success' | 'info' | 'warning' | 'danger' | 'premium' | 'glass'
@@ -47,10 +47,8 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
       lg: 'text-base px-4 py-2 gap-2',
     }
 
-    // Указываем, что Component является motion.div, если animated = true
-    const Component = animated ? motion.div : 'div'
+    const Element: ElementType = animated ? motion.div : 'div';
 
-    // Собираем пропсы, которые будут переданы motion.div
     const motionProps: HTMLMotionProps<'div'> = animated ? {
       initial: { scale: 0, opacity: 0 },
       animate: { scale: 1, opacity: 1 },
@@ -58,16 +56,26 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
       transition: { type: 'spring', stiffness: 500, damping: 25 }
     } : {};
 
-    // Фильтруем пропсы, чтобы убрать те, которые не нужны для motion.div
     const {
+      // Убираем пропсы, которые могут вызвать конфликт, если не передаем motion.div
       onAnimationStart,
       onAnimationEnd,
       onAnimationIteration,
-      ...restPropsWithoutAnimationEvents
+      ...restProps
     } = props;
 
+    // Фильтруем пропсы, чтобы избежать передачи motion-специфичных пропсов на обычный div
+    const filteredProps: Record<string, any> = {};
+    const motionPropKeys = Object.keys(motionProps);
+
+    for (const key in restProps) {
+      if (!motionPropKeys.includes(key)) {
+        filteredProps[key] = restProps[key];
+      }
+    }
+
     return (
-      <Component
+      <Element
         ref={ref}
         className={cn(
           baseStyles,
@@ -76,8 +84,8 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
           pulse && 'animate-pulse',
           className
         )}
-        {...motionProps} // Передаем motion props
-        {...restPropsWithoutAnimationEvents} // Передаем остальные пропсы
+        {...(animated ? motionProps : {})} // Передаем motionProps только если animated=true
+        {...filteredProps} // Передаем отфильтрованные стандартные пропсы
       >
         {icon && <span className="flex-shrink-0">{icon}</span>}
         {children}
@@ -94,14 +102,13 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
             </svg>
           </button>
         )}
-      </Component>
+      </Element>
     )
   }
 )
 
-
-
-Badge.displayName = 'Badge'
+// Устанавливаем displayName для компонента Badge
+Badge.displayName = 'Badge';
 
 // Specialized badges
 export const GameBadge = {
@@ -110,52 +117,56 @@ export const GameBadge = {
       Ур. {level}
     </Badge>
   ),
-  
+
   Rank: ({ rank, icon }: { rank: string; icon?: string }) => (
     <Badge variant="info" icon={icon}>
       {rank}
     </Badge>
   ),
-  
+
   Status: ({ status }: { status: 'online' | 'offline' | 'busy' | 'away' }) => {
+    // Использование `as const` для обеспечения строгой типизации
     const configs = {
       online: { variant: 'success' as const, icon: '🟢', text: 'В сети' },
       offline: { variant: 'default' as const, icon: '⚫', text: 'Не в сети' },
       busy: { variant: 'danger' as const, icon: '🔴', text: 'Занят' },
       away: { variant: 'warning' as const, icon: '🟡', text: 'Отошел' },
     }
-    
+
     const config = configs[status]
-    
+
     return (
       <Badge variant={config.variant} size="xs" icon={config.icon}>
         {config.text}
       </Badge>
     )
   },
-  
+
   Rarity: ({ rarity }: { rarity: 'common' | 'rare' | 'epic' | 'legendary' }) => {
+    // Использование `as const` для обеспечения строгой типизации
     const configs = {
       common: { variant: 'default' as const, text: 'Обычный' },
       rare: { variant: 'info' as const, text: 'Редкий' },
       epic: { variant: 'premium' as const, text: 'Эпический' },
+      // Здесь `className` передается как часть конфигурации
       legendary: { variant: 'premium' as const, text: 'Легендарный', className: 'bg-gradient-to-r from-yellow-400 to-orange-500' },
     }
-    
+
     const config = configs[rarity]
-    
+
     return (
-      <Badge 
-        variant={config.variant} 
-        size="sm" 
+      <Badge
+        variant={config.variant}
+        size="sm"
+        // Передаем className из конфигурации
         className={config.className}
-        animated
+        animated // Этот пропс теперь будет корректно обрабатываться
       >
         {config.text}
       </Badge>
     )
   },
-  
+
   Resource: ({ type, amount }: { type: 'gold' | 'wood' | 'stone' | 'food' | 'energy'; amount: number }) => {
     const configs = {
       gold: { icon: '💰', color: 'text-yellow-500' },
@@ -164,11 +175,12 @@ export const GameBadge = {
       food: { icon: '🌾', color: 'text-green-500' },
       energy: { icon: '⚡', color: 'text-purple-500' },
     }
-    
+
     const config = configs[type]
-    
+
     return (
       <Badge variant="glass" size="sm" className={config.color}>
+        {/* Внутри Badge, элементы и текст корректно отображаются */}
         <span>{config.icon}</span>
         <span className="font-bold">{formatNumber(amount)}</span>
       </Badge>
