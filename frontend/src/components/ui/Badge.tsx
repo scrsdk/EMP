@@ -1,7 +1,7 @@
 'use client'
 
 import { HTMLAttributes, forwardRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, HTMLMotionProps } from 'framer-motion' // Импортируем HTMLMotionProps
 import { cn } from '@/lib/utils'
 import { formatNumber } from '@/lib/format'
 
@@ -16,9 +16,9 @@ interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
-  ({ 
-    className, 
-    variant = 'default', 
+  ({
+    className,
+    variant = 'default',
     size = 'sm',
     animated = false,
     pulse = false,
@@ -26,7 +26,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
     closable = false,
     onClose,
     children,
-    ...props 
+    ...props
   }, ref) => {
     const baseStyles = 'inline-flex items-center justify-center font-medium rounded-full transition-all duration-200'
 
@@ -47,21 +47,24 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
       lg: 'text-base px-4 py-2 gap-2',
     }
 
+    // Указываем, что Component является motion.div, если animated = true
     const Component = animated ? motion.div : 'div'
-    const animationProps = animated ? {
+
+    // Собираем пропсы, которые будут переданы motion.div
+    const motionProps: HTMLMotionProps<'div'> = animated ? {
       initial: { scale: 0, opacity: 0 },
       animate: { scale: 1, opacity: 1 },
       exit: { scale: 0, opacity: 0 },
       transition: { type: 'spring', stiffness: 500, damping: 25 }
-    } : {}
+    } : {};
 
-    // Исключаем DOM-события анимации. sh, чтобы не конфликтовали с motion props
+    // Фильтруем пропсы, чтобы убрать те, которые не нужны для motion.div
     const {
       onAnimationStart,
       onAnimationEnd,
       onAnimationIteration,
-      ...restProps
-    } = props
+      ...restPropsWithoutAnimationEvents
+    } = props;
 
     return (
       <Component
@@ -73,8 +76,8 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
           pulse && 'animate-pulse',
           className
         )}
-        {...animationProps}
-        {...restProps}
+        {...motionProps} // Передаем motion props
+        {...restPropsWithoutAnimationEvents} // Передаем остальные пропсы
       >
         {icon && <span className="flex-shrink-0">{icon}</span>}
         {children}
@@ -95,6 +98,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
     )
   }
 )
+
 
 
 Badge.displayName = 'Badge'
