@@ -55,7 +55,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
       transition: { type: 'spring', stiffness: 500, damping: 25 }
     } : {}
 
-    // Исключаем DOM-события анимации, чтобы не конфликтовали с motion props
+    // Исключаем DOM-события анимации. sh, чтобы не конфликтовали с motion props
     const {
       onAnimationStart,
       onAnimationEnd,
